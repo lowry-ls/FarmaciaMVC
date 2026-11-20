@@ -1,10 +1,21 @@
 
 using Npgsql;
+using FarmaciaMVC.Data;
 
 var builder = WebApplication.CreateBuilder(args);
 
 // Configurar los servicios MVC
 builder.Services.AddControllersWithViews();
+var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
+if (string.IsNullOrWhiteSpace(connectionString))
+{
+    builder.Services.AddScoped<IDashboardRepository, DemoDashboardRepository>();
+}
+else
+{
+    builder.Services.AddSingleton(_ => NpgsqlDataSource.Create(connectionString));
+    builder.Services.AddScoped<IDashboardRepository, PostgresDashboardRepository>();
+}
 
 var app = builder.Build();
 
@@ -35,9 +46,7 @@ if (app.Environment.IsDevelopment())
         IConfiguration configuration,
         ILogger<Program> logger) =>
     {
-        var connectionString = configuration.GetConnectionString("DefaultConnection");
-
-        if (string.IsNullOrWhiteSpace(connectionString))
+        if (string.IsNullOrWhiteSpace(configuration.GetConnectionString("DefaultConnection")))
         {
             logger.LogWarning(
                 "Database connection check skipped because ConnectionStrings:DefaultConnection is not configured.");
@@ -50,8 +59,9 @@ if (app.Environment.IsDevelopment())
 
         try
         {
-            await using var connection = new NpgsqlConnection(connectionString);
-            await connection.OpenAsync();
+            await using var dataSource = NpgsqlDataSource.Create(
+                configuration.GetConnectionString("DefaultConnection")!);
+            await using var connection = await dataSource.OpenConnectionAsync();
 
             return Results.Ok("Database connection successful.");
         }

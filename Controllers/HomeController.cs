@@ -1,14 +1,23 @@
 using System.Diagnostics;
 using Microsoft.AspNetCore.Mvc;
+using FarmaciaMVC.Data;
 using FarmaciaMVC.Models;
 
 namespace FarmaciaMVC.Controllers;
 
 public class HomeController : Controller
 {
-    public IActionResult Index()
+    private readonly IDashboardRepository _dashboardRepository;
+
+    public HomeController(IDashboardRepository dashboardRepository)
     {
-        return View();
+        _dashboardRepository = dashboardRepository;
+    }
+
+    public async Task<IActionResult> Index(CancellationToken cancellationToken)
+    {
+        var model = await _dashboardRepository.GetDashboardAsync(cancellationToken);
+        return View(model);
     }
 
     public IActionResult Privacy()
